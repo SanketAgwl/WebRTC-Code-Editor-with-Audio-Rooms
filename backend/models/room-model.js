@@ -10,6 +10,10 @@ const roomSchema = new Schema(
       type: [{ type: Schema.Types.ObjectId, ref: "User" }],
       required: false,
     },
+    users: {
+      type: [{ type: Schema.Types.ObjectId, ref: "User" }],
+      required: false,
+    },
   },
   {
     timestamps: true,

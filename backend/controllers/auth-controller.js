@@ -7,21 +7,26 @@ const UserDto = require("../dtos/user-dto");
 class AuthController {
   async sendOtp(req, res) {
     console.log(req.body);
-    const { phone } = req.body;
-    if (!phone) {
-      res.status(400).json({ message: "Phone field is required" });
+    const { phone, email } = req.body;
+    console.log(phone);
+    console.log(email);
+
+    if (!phone && !email) {
+      res.status(400).json({ message: "Phone or Email field is required" });
     }
 
     const otp = await otpService.generateOtp();
     const ttl = 1000 * 60 * 2; //2 min
     const expires = Date.now() + ttl;
-    const data = `${phone}.${otp}.${expires}`;
+    const data = `${phone}.${email}.${otp}.${expires}`;
     const hash = await hashService.hashOtp(data);
 
     try {
-      // await otpService.sendBySms(phone, otp);
+      // if(phone) await otpService.sendBySms(phone, otp);
+      if (email) await otpService.sendByEmail(email, otp);
       res.json({
         hash: `${hash}.${expires}`,
+        email,
         phone,
         otp,
       });
@@ -34,8 +39,8 @@ class AuthController {
   }
 
   async verifyOtp(req, res) {
-    const { otp, hash, phone } = req.body;
-    if (!otp || !hash || !phone) {
+    const { otp, hash, phone, email } = req.body;
+    if (!otp || !hash || !(phone || email)) {
       res.status(400).json({ message: "All fields are required" });
     }
 
@@ -43,19 +48,29 @@ class AuthController {
     if (Date.now() > +expires) {
       res.status(400).json({ message: "Otp expired" });
     }
-    const data = `${phone}.${otp}.${expires}`;
+    const data = `${phone}.${email}.${otp}.${expires}`;
 
     const isValid = otpService.verifyOtp(data, hashedOtp);
+    console.log("Valid");
     if (!isValid) res.status(400).json({ message: "Invalid OTP" });
 
     let user;
-
-    try {
-      user = await userService.findUser({ phone });
-      if (!user) user = await userService.createUser({ phone });
-    } catch (err) {
-      console.log(err);
-      res.status(500).json({ message: err.message });
+    if (phone) {
+      try {
+        user = await userService.findUser({ phone });
+        if (!user) user = await userService.createUser({ phone });
+      } catch (err) {
+        console.log(err);
+        res.status(500).json({ message: err.message });
+      }
+    } else {
+      try {
+        user = await userService.findUser({ email });
+        if (!user) user = await userService.createUser({ email });
+      } catch (err) {
+        console.log(err);
+        res.status(500).json({ message: err.message });
+      }
     }
 
     const { accessToken, refreshToken } = tokenService.generateTokens({

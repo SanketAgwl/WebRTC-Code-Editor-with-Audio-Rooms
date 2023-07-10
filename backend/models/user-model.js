@@ -3,7 +3,11 @@ const Schema = mongoose.Schema;
 
 const userSchema = new Schema(
   {
-    phone: { type: String, required: true },
+    phone: { type: String },
+    email: { type: String },
+    followers: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    following: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    bio: { type: String },
     name: { type: String, required: false },
     avatar: {
       type: String,
